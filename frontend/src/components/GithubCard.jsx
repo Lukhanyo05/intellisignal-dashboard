@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { mockGitHubData } from '../data/mockGitHubData';
 
 const GitHubCard = ({ username = "Lukhanyo05" }) => {
   const [userData, setUserData] = useState(null);
@@ -8,13 +7,11 @@ const GitHubCard = ({ username = "Lukhanyo05" }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchInput, setSearchInput] = useState(username);
-  const [usingMockData, setUsingMockData] = useState(false);
 
   const fetchGitHubData = async (githubUsername) => {
     try {
       setLoading(true);
       setError(null);
-      setUsingMockData(false);
       
       // Connect directly to GitHub API (no backend needed)
       const [userResponse, reposResponse] = await Promise.all([
@@ -26,11 +23,8 @@ const GitHubCard = ({ username = "Lukhanyo05" }) => {
       setRepos(reposResponse.data);
       
     } catch (err) {
-      console.log('Falling back to mock data:', err.message);
-      // Fall back to mock data
-      setUserData(mockGitHubData.user);
-      setRepos(mockGitHubData.repos);
-      setUsingMockData(true);
+      console.error('Error fetching GitHub data:', err.message);
+      setError('Failed to fetch GitHub data. Please check the username and try again.');
     } finally {
       setLoading(false);
     }
@@ -84,9 +78,9 @@ const GitHubCard = ({ username = "Lukhanyo05" }) => {
         </form>
       </div>
 
-      {usingMockData && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-          <p className="text-sm">Using demonstration data. Connect your GitHub account to see real data.</p>
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <p className="text-sm">{error}</p>
         </div>
       )}
 

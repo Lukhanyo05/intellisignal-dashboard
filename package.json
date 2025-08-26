@@ -1,1 +1,1 @@
-{"name":"intellisignal-dashboard","version":"1.0.0","scripts":{"start":"cd backend && npm start","install":"cd backend && npm install"},"engines":{"node":">=16.0.0"}} 
+{"name":"intellisignal-dashboard","version":"1.0.0","scripts":{"start":"cd backend && npm start","install":"cd backend && npm install"},"engines":{"node":">=16.0.0"}}
