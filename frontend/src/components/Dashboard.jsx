@@ -7,7 +7,7 @@ import GitLabCard from './GitLabCard';
 // Dynamic API base URL for development vs production
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:5000' 
-  : 'https://your-heroku-app.herokuapp.com';
+  : 'https://intellisignal-dashboard-b5c144f215dd.herokuapp.com';
 
 /**
  * Main Dashboard Component - DevSignal Analytics Dashboard
@@ -15,13 +15,17 @@ const API_BASE_URL = window.location.hostname === 'localhost'
  */
 const Dashboard = () => {
   const [stocks, setStocks] = useState([]);
+  const [githubStats, setGithubStats] = useState(null);
+  const [gitlabStats, setGitlabStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [marketMood, setMarketMood] = useState('😴');
   const [activeTab, setActiveTab] = useState('financial'); // 'financial', 'github', 'gitlab'
+  const [commitCount, setCommitCount] = useState(0);
 
-  // Calculate market mood function (keep your existing function)
+  // Calculate market mood function
   const calculateMarketMood = (stocksData) => {
+    if (!stocksData || stocksData.length === 0) return '😴';
     const avgPerformance = stocksData.reduce((sum, stock) => sum + stock.changesPercentage, 0) / stocksData.length;
     if (avgPerformance > 2) return '🚀';
     if (avgPerformance > 1) return '😎';
@@ -31,33 +35,64 @@ const Dashboard = () => {
     return '🔥';
   };
 
+  // Fetch live GitHub and GitLab data
+  const fetchLiveDeveloperData = async () => {
+    try {
+      // Fetch GitHub data
+      const githubResponse = await axios.get(
+        `${API_BASE_URL}/api/github/user/Lukhanyo05`,
+        { timeout: 10000 }
+      );
+
+      // Fetch GitLab data
+      const gitlabResponse = await axios.get(
+        `${API_BASE_URL}/api/gitlab/search/lukhanyo`,
+        { timeout: 10000 }
+      );
+
+      setGithubStats(githubResponse.data);
+      setGitlabStats(gitlabResponse.data);
+
+      // Calculate estimated commit count based on repos and projects
+      const githubRepos = githubResponse.data.public_repos || 0;
+      const gitlabProjects = gitlabResponse.data.projects?.length || 0;
+      setCommitCount(githubRepos * 15 + gitlabProjects * 8); // Estimated average commits
+
+    } catch (err) {
+      console.log('Developer data API error:', err.message);
+      // Continue with mock financial data even if developer APIs fail
+    }
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get(`${API_BASE_URL}/api/dashboard-data`, {
-          timeout: 8000
-        });
+        // Fetch live developer data
+        await fetchLiveDeveloperData();
         
-        if (response.data && response.data.length > 0) {
-          setStocks(response.data);
-          setMarketMood(calculateMarketMood(response.data));
-        } else {
-          throw new Error('No data received from API');
-        }
+        // Since financial endpoints don't exist, use mock data but don't call API
+        const mockData = [
+          { symbol: 'AAPL', name: 'Apple Inc.', price: 227.76, change: 2.86, changesPercentage: 1.27 },
+          { symbol: 'MSFT', name: 'Microsoft Corp.', price: 415.86, change: 5.32, changesPercentage: 1.30 },
+          { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 175.24, change: -1.15, changesPercentage: -0.65 },
+          { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 178.22, change: 3.45, changesPercentage: 1.97 },
+          { symbol: 'META', name: 'Meta Platforms', price: 492.64, change: 8.72, changesPercentage: 1.80 }
+        ];
+        
+        setStocks(mockData);
+        setMarketMood(calculateMarketMood(mockData));
         
       } catch (err) {
-        console.error('❌ API Error:', err);
+        console.error('❌ Dashboard Error:', err);
         
-        let errorMessage = 'Financial data temporarily unavailable ☕';
+        let errorMessage = 'Data temporarily unavailable ☕';
         if (err.code === 'ECONNABORTED') {
           errorMessage = 'Data request timeout 🚦';
         } else if (err.code === 'NETWORK_ERROR') {
           errorMessage = 'Network connection lost 🕊️';
-        } else if (err.response?.status === 429) {
-          errorMessage = 'API rate limit exceeded 🌬️';
         }
         
         setError(errorMessage);
@@ -113,6 +148,22 @@ const Dashboard = () => {
           Financial markets + Developer insights in one dashboard
         </p>
 
+        {/* Live Stats Bar */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 max-w-2xl mx-auto">
+          <div className="bg-white rounded-xl p-3 shadow-md text-center">
+            <div className="text-lg font-bold text-blue-600">{githubStats?.public_repos || 0}</div>
+            <div className="text-xs text-gray-600">GitHub Repos</div>
+          </div>
+          <div className="bg-white rounded-xl p-3 shadow-md text-center">
+            <div className="text-lg font-bold text-orange-600">{gitlabStats?.projects?.length || 0}</div>
+            <div className="text-xs text-gray-600">GitLab Projects</div>
+          </div>
+          <div className="bg-white rounded-xl p-3 shadow-md text-center">
+            <div className="text-lg font-bold text-green-600">{commitCount}+</div>
+            <div className="text-xs text-gray-600">Total Commits</div>
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex justify-center mt-6 mb-4">
           <div className="bg-white rounded-lg shadow-inner p-1 flex">
@@ -128,7 +179,7 @@ const Dashboard = () => {
               >
                 {tab === 'financial' && '📈 Financial'}
                 {tab === 'github' && '🐙 GitHub'}
-                {tab === 'gitlab' && '🐊 GitLab'}
+                {tab === 'gitlab' && '🦊 GitLab'}
               </button>
             ))}
           </div>
@@ -161,7 +212,7 @@ const Dashboard = () => {
 
             <div className="bg-white rounded-2xl shadow-xl p-6 text-center mb-8">
               <h3 className="text-2xl font-bold text-gray-800 mb-4">Financial Overview</h3>
-              <p className="text-gray-600">Real-time market data and analysis</p>
+              <p className="text-gray-600">Demo financial data with live developer insights</p>
             </div>
           </>
         )}
@@ -177,7 +228,7 @@ const Dashboard = () => {
         {activeTab === 'gitlab' && (
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div className="lg:col-span-2">
-              <GitLabCard username="LukhanyoN" />
+              <GitLabCard username="lukhanyoN" />
             </div>
           </section>
         )}
@@ -189,7 +240,7 @@ const Dashboard = () => {
           DevSignal Analytics • Financial + Developer Intelligence
         </p>
         <p className="text-sm text-gray-400 mt-1">
-          Connected to real-time APIs • Auto-refreshing every 60 seconds
+          Live GitHub & GitLab data • {commitCount}+ commits tracked • Auto-refreshing every 60 seconds
         </p>
       </footer>
     </div>

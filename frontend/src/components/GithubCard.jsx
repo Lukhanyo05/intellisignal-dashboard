@@ -4,6 +4,8 @@ import axios from 'axios';
 const GitHubCard = ({ username = "Lukhanyo05" }) => {
   const [userData, setUserData] = useState(null);
   const [repos, setRepos] = useState([]);
+  const [repoCommits, setRepoCommits] = useState({}); // Store commits for each repo
+  const [expandedRepo, setExpandedRepo] = useState(null); // Track which repo is expanded
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchInput, setSearchInput] = useState(username);
@@ -21,12 +23,47 @@ const GitHubCard = ({ username = "Lukhanyo05" }) => {
       
       setUserData(userResponse.data);
       setRepos(reposResponse.data);
+      setRepoCommits({}); // Reset commits when user changes
+      setExpandedRepo(null); // Reset expanded repo
       
     } catch (err) {
       console.error('Error fetching GitHub data:', err.message);
       setError('Failed to fetch GitHub data. Please check the username and try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRepoCommits = async (repoOwner, repoName) => {
+    try {
+      // Use your backend API for commits
+      const response = await axios.get(
+        `https://intellisignal-dashboard-b5c144f215dd.herokuapp.com/api/github/repos/${repoOwner}/${repoName}/commits`
+      );
+      
+      setRepoCommits(prev => ({
+        ...prev,
+        [repoName]: response.data
+      }));
+      
+    } catch (err) {
+      console.error('Error fetching commits:', err.message);
+      setRepoCommits(prev => ({
+        ...prev,
+        [repoName]: [] // Set empty array on error
+      }));
+    }
+  };
+
+  const toggleRepoExpansion = (repo) => {
+    if (expandedRepo === repo.name) {
+      setExpandedRepo(null); // Collapse if already expanded
+    } else {
+      setExpandedRepo(repo.name); // Expand this repo
+      // Fetch commits if not already loaded
+      if (!repoCommits[repo.name]) {
+        fetchRepoCommits(repo.owner.login, repo.name);
+      }
     }
   };
 
@@ -124,22 +161,55 @@ const GitHubCard = ({ username = "Lukhanyo05" }) => {
               <div className="space-y-3">
                 {repos.slice(0, 5).map(repo => (
                   <div key={repo.id} className="p-3 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-                    <a 
-                      href={repo.html_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-gray-800 hover:text-gray-900 font-semibold block mb-1"
-                    >
-                      {repo.name}
-                    </a>
+                    <div className="flex justify-between items-start">
+                      <a 
+                        href={repo.html_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-gray-800 hover:text-gray-900 font-semibold block mb-1 flex-1"
+                      >
+                        {repo.name}
+                      </a>
+                      <button
+                        onClick={() => toggleRepoExpansion(repo)}
+                        className="ml-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-sm"
+                      >
+                        {expandedRepo === repo.name ? 'Hide Commits' : 'Show Commits'}
+                      </button>
+                    </div>
+                    
                     {repo.description && (
                       <p className="text-sm text-gray-600 mb-2">{repo.description}</p>
                     )}
-                    <div className="flex justify-between text-xs text-gray-500">
+                    
+                    <div className="flex justify-between text-xs text-gray-500 mb-2">
                       <span>⭐ {repo.stargazers_count || 0}</span>
                       <span>🍴 {repo.forks_count || 0}</span>
                       <span>{repo.language || 'Code'}</span>
                     </div>
+
+                    {/* Commit Section */}
+                    {expandedRepo === repo.name && (
+                      <div className="mt-3 pt-3 border-t">
+                        <h5 className="font-medium text-sm mb-2">Latest Commits:</h5>
+                        {repoCommits[repo.name] ? (
+                          repoCommits[repo.name].length > 0 ? (
+                            repoCommits[repo.name].slice(0, 5).map(commit => (
+                              <div key={commit.sha} className="mb-2 p-2 bg-gray-50 rounded text-sm">
+                                <p className="text-gray-800">{commit.commit.message}</p>
+                                <small className="text-gray-500">
+                                  {new Date(commit.commit.author.date).toLocaleDateString()}
+                                </small>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 text-sm">No commits found</p>
+                          )
+                        ) : (
+                          <p className="text-gray-500 text-sm">Loading commits...</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -4,6 +4,8 @@ import axios from 'axios';
 const GitLabCard = ({ username = "lukhanyoN" }) => {
   const [userData, setUserData] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [projectCommits, setProjectCommits] = useState({}); // Store commits for each project
+  const [expandedProject, setExpandedProject] = useState(null); // Track which project is expanded
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchInput, setSearchInput] = useState(username);
@@ -13,19 +15,15 @@ const GitLabCard = ({ username = "lukhanyoN" }) => {
       setLoading(true);
       setError(null);
       
-      // GitLab API endpoint for user data
-      const userResponse = await axios.get(`https://gitlab.com/api/v4/users?username=${gitlabUsername}`);
+      // Use your backend API for GitLab data
+      const response = await axios.get(
+        `https://intellisignal-dashboard-b5c144f215dd.herokuapp.com/api/gitlab/search/${gitlabUsername}`
+      );
       
-      if (userResponse.data.length === 0) {
-        throw new Error('GitLab user not found');
-      }
-      
-      const userData = userResponse.data[0];
-      setUserData(userData);
-      
-      // Fetch user's projects
-      const projectsResponse = await axios.get(`https://gitlab.com/api/v4/users/${userData.id}/projects?order_by=updated_at&per_page=5`);
-      setProjects(projectsResponse.data);
+      setUserData(response.data.user);
+      setProjects(response.data.projects);
+      setProjectCommits({}); // Reset commits when user changes
+      setExpandedProject(null); // Reset expanded project
       
     } catch (err) {
       console.log('GitLab API error:', err.message);
@@ -59,6 +57,39 @@ const GitLabCard = ({ username = "lukhanyoN" }) => {
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProjectCommits = async (projectId) => {
+    try {
+      // Use your backend API for GitLab commits
+      const response = await axios.get(
+        `https://intellisignal-dashboard-b5c144f215dd.herokuapp.com/api/gitlab/projects/${projectId}/commits`
+      );
+      
+      setProjectCommits(prev => ({
+        ...prev,
+        [projectId]: response.data
+      }));
+      
+    } catch (err) {
+      console.error('Error fetching GitLab commits:', err.message);
+      setProjectCommits(prev => ({
+        ...prev,
+        [projectId]: [] // Set empty array on error
+      }));
+    }
+  };
+
+  const toggleProjectExpansion = (project) => {
+    if (expandedProject === project.id) {
+      setExpandedProject(null); // Collapse if already expanded
+    } else {
+      setExpandedProject(project.id); // Expand this project
+      // Fetch commits if not already loaded
+      if (!projectCommits[project.id]) {
+        fetchProjectCommits(project.id);
+      }
     }
   };
 
@@ -152,22 +183,55 @@ const GitLabCard = ({ username = "lukhanyoN" }) => {
               <div className="space-y-3">
                 {projects.map(project => (
                   <div key={project.id} className="p-3 border border-orange-200 rounded-lg hover:shadow-md transition-shadow">
-                    <a 
-                      href={project.web_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-gray-800 hover:text-gray-900 font-semibold block mb-1"
-                    >
-                      {project.name}
-                    </a>
+                    <div className="flex justify-between items-start">
+                      <a 
+                        href={project.web_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-gray-800 hover:text-gray-900 font-semibold block mb-1 flex-1"
+                      >
+                        {project.name}
+                      </a>
+                      <button
+                        onClick={() => toggleProjectExpansion(project)}
+                        className="ml-2 bg-orange-200 hover:bg-orange-300 text-orange-700 px-2 py-1 rounded text-sm"
+                      >
+                        {expandedProject === project.id ? 'Hide Commits' : 'Show Commits'}
+                      </button>
+                    </div>
+                    
                     {project.description && (
                       <p className="text-sm text-gray-600 mb-2">{project.description}</p>
                     )}
-                    <div className="flex justify-between text-xs text-gray-500">
+                    
+                    <div className="flex justify-between text-xs text-gray-500 mb-2">
                       <span>⭐ {project.star_count || 0}</span>
                       <span>🍴 {project.forks_count || 0}</span>
                       <span>🔄 {project.last_activity_at?.split('T')[0]}</span>
                     </div>
+
+                    {/* Commit Section */}
+                    {expandedProject === project.id && (
+                      <div className="mt-3 pt-3 border-t border-orange-200">
+                        <h5 className="font-medium text-sm mb-2">Latest Commits:</h5>
+                        {projectCommits[project.id] ? (
+                          projectCommits[project.id].length > 0 ? (
+                            projectCommits[project.id].slice(0, 5).map(commit => (
+                              <div key={commit.id} className="mb-2 p-2 bg-orange-50 rounded text-sm">
+                                <p className="text-gray-800">{commit.title || commit.message}</p>
+                                <small className="text-gray-500">
+                                  {new Date(commit.created_at || commit.committed_date).toLocaleDateString()}
+                                </small>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 text-sm">No commits found</p>
+                          )
+                        ) : (
+                          <p className="text-gray-500 text-sm">Loading commits...</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
