@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
-test("renders IntelliSignal app", () => {
+test("renders learn react link", () => {
   render(<App />);
-  const appName = screen.getByText(/IntelliSignal/i);
-  expect(appName).toBeInTheDocument();
+  const linkElement = screen.getByText(/DevSignal Analytics/i);
+  expect(linkElement).toBeInTheDocument();
 });
