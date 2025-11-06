@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`app matches snapshot 1`] = `
+<div
+  class="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-purple-50"
+>
+  <div
+    class="text-center"
+  >
+    <div
+      class="animate-bounce mb-4"
+    >
+      <span
+        class="text-4xl"
+      >
+        📊
+      </span>
+    </div>
+    <div
+      class="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-500 mx-auto mb-4"
+    />
+    <h2
+      class="text-xl font-semibold text-gray-800 mb-2"
+    >
+      Loading DevSignal Dashboard...
+    </h2>
+    <p
+      class="text-gray-600"
+    >
+      Preparing your financial and developer insights
+    </p>
+  </div>
+</div>
+`;
